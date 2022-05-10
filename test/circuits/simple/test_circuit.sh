@@ -55,19 +55,19 @@ npx snarkit2 check $CIRCUIT_DIR --witness_type json
 npx snarkjs rej $CIRCUIT_DIR/circuit.r1cs $CIRCUIT_DIR/circuit.r1cs.json
 
 echo "Step4: export verification key"
-$PLONKIT_BIN export-verification-key -m $SETUP_MK -c $CIRCUIT_DIR/circuit.r1cs.json -v $CIRCUIT_DIR/vk.bin
+$PLONKIT_BIN export-verification-key -m $SETUP_MK -c $CIRCUIT_DIR/circuit.r1cs.json -v $CIRCUIT_DIR/vk.bin --overwrite
 
 echo "Step5: generate verifier smart contract"
-$PLONKIT_BIN generate-verifier -v $CIRCUIT_DIR/vk.bin -s $CIRCUIT_DIR/verifier.sol #-t contrib/template.sol
+$PLONKIT_BIN generate-verifier -v $CIRCUIT_DIR/vk.bin -s $CIRCUIT_DIR/verifier.sol --overwrite #-t contrib/template.sol
 
 if [ "$DUMP_LAGRANGE_KEY" = false ]; then
   echo "Step6: prove with key_monomial_form"
-  $PLONKIT_BIN prove -m $SETUP_MK -c $CIRCUIT_DIR/circuit.r1cs.json -w $CIRCUIT_DIR/witness.json -p $CIRCUIT_DIR/proof.bin -j $CIRCUIT_DIR/proof.json -i $CIRCUIT_DIR/public.json
+  $PLONKIT_BIN prove -m $SETUP_MK -c $CIRCUIT_DIR/circuit.r1cs.json -w $CIRCUIT_DIR/witness.json -p $CIRCUIT_DIR/proof.bin -j $CIRCUIT_DIR/proof.json -i $CIRCUIT_DIR/public.json --overwrite
 else
   echo "Step6.1: dump key_lagrange_form from key_monomial_form"
-  $PLONKIT_BIN dump-lagrange -m $SETUP_MK -l $SETUP_LK -c $CIRCUIT_DIR/circuit.r1cs.json
+  $PLONKIT_BIN dump-lagrange -m $SETUP_MK -l $SETUP_LK -c $CIRCUIT_DIR/circuit.r1cs.json --overwrite
   echo "Step6.2: prove with key_monomial_form & key_lagrange_form"
-  $PLONKIT_BIN prove -m $SETUP_MK -l $SETUP_LK -c $CIRCUIT_DIR/circuit.r1cs.json -w $CIRCUIT_DIR/witness.json -p $CIRCUIT_DIR/proof.bin -j $CIRCUIT_DIR/proof.json -i $CIRCUIT_DIR/public.json
+  $PLONKIT_BIN prove -m $SETUP_MK -l $SETUP_LK -c $CIRCUIT_DIR/circuit.r1cs.json -w $CIRCUIT_DIR/witness.json -p $CIRCUIT_DIR/proof.bin -j $CIRCUIT_DIR/proof.json -i $CIRCUIT_DIR/public.json --overwrite
 fi
 
 echo "Step7: verify"
