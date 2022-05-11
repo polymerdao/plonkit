@@ -46,6 +46,31 @@ pub fn load_proofs_from_list<E: Engine>(list: &str) -> Vec<Proof<E, PlonkCsWidth
     proofs
 }
 
+/// load multiple proofs & vks form a list
+pub fn load_proofs_vks_from_list<E: Engine>(list: &str) -> (Vec<Proof<E, PlonkCsWidth4WithNextStepParams>>, Vec<VerificationKey<E, PlonkCsWidth4WithNextStepParams>>) {
+    let file = File::open(list).expect("read proof list file err");
+    let lines: Vec<String> = BufReader::new(file).lines().map(|l| l.expect("could not parse line")).collect();
+    let mut proofs = Vec::new();
+    let mut vks = Vec::new();
+
+    let mut i = 0;
+    for line in lines {
+        log::info!("reading {:?}", line);
+        if i % 2 == 1 {
+            vks.push(load_verification_key::<E>(&line));
+        } else {
+            proofs.push(load_proof::<E>(&line))
+        }
+        i = i + 1;
+    }
+
+    assert!(!proofs.is_empty(), "no proof file found!");
+    assert!(!vks.is_empty(), "no vk file found!");
+    assert_eq!(proofs.len(), vks.len(), "proof count and vk count do not match!");
+
+    (proofs, vks)
+}
+
 /// load recursive proof file by filename
 pub fn load_aggregated_proof(filename: &str) -> AggregatedProof {
     AggregatedProof::read(File::open(filename).expect("read aggregated proof file err")).expect("read aggregated proof err")

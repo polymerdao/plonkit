@@ -46,6 +46,8 @@ enum SubCommand {
     ExportRecursiveVerificationKey(ExportRecursiveVerificationKeyOpts),
     /// Aggregate multiple proofs
     RecursiveProve(RecursiveProveOpts),
+    /// Aggregate multiple proofs of different circuits
+    RecursiveProve2(RecursiveProveOpts2),
     /// Verify recursive proof
     RecursiveVerify(RecursiveVerifyOpts),
     /// Check proofs aggregation
@@ -230,6 +232,25 @@ struct RecursiveProveOpts {
     overwrite: bool,
 }
 
+/// A subcommand for aggregating multiple proofs
+#[derive(Clap)]
+struct RecursiveProveOpts2 {
+    /// Source file for a BIG Plonk universal setup srs in monomial form
+    #[clap(short = "m", long = "srs_monomial_form")]
+    srs_monomial_form: String,
+    /// Old proof file list text file
+    #[clap(short = "f", long = "old_proof_list")]
+    old_proof_list: String,
+    /// Output file for aggregated proof BIN
+    #[clap(short = "n", long = "new_proof", default_value = "recursive_proof.bin")]
+    new_proof: String,
+    /// Output file for proof json
+    #[clap(short = "j", long = "proofjson", default_value = "recursive_proof.json")]
+    proofjson: String,
+    #[clap(long = "overwrite")]
+    overwrite: bool,
+}
+
 /// A subcommand for verifying recursive proof
 #[derive(Clap)]
 struct RecursiveVerifyOpts {
@@ -257,14 +278,14 @@ struct CheckAggregationOpts {
 
 fn main() {
     // Always print backtrace on panic.
-    ::std::env::set_var("RUST_BACKTRACE", "1");
-    match ::std::env::var("RUST_LOG") {
+    std::env::set_var("RUST_BACKTRACE", "1");
+    match std::env::var("RUST_LOG") {
         Ok(value) => {
             if value.is_empty() {
-                ::std::env::set_var("RUST_LOG", "info");
+                std::env::set_var("RUST_LOG", "info");
             }
         }
-        Err(_) => ::std::env::set_var("RUST_LOG", "info"),
+        Err(_) => std::env::set_var("RUST_LOG", "info"),
     }
     env_logger::init();
 
@@ -299,6 +320,9 @@ fn main() {
         }
         SubCommand::RecursiveProve(o) => {
             recursive_prove(o);
+        }
+        SubCommand::RecursiveProve2(o) => {
+            recursive_prove2(o);
         }
         SubCommand::RecursiveVerify(o) => {
             recursive_verify(o);
@@ -396,7 +420,7 @@ fn prove(opts: ProveOpts) {
         reader::load_key_monomial_form(&opts.srs_monomial_form),
         reader::maybe_load_key_lagrange_form(opts.srs_lagrange_form),
     )
-    .expect("prepare err");
+        .expect("prepare err");
 
     log::info!("Proving...");
     let proof = setup.prove(circuit, &opts.transcript).unwrap();
@@ -523,6 +547,26 @@ fn recursive_prove(opts: RecursiveProveOpts) {
     let old_proofs = reader::load_proofs_from_list::<Bn256>(&opts.old_proof_list);
     let old_vk = reader::load_verification_key::<Bn256>(&opts.old_vk);
     let proof = recursive::prove(big_crs, old_proofs, old_vk).unwrap();
+    if !opts.overwrite {
+        let path = Path::new(&opts.new_proof);
+        assert!(!path.exists(), "duplicate proof file: {}", path.display());
+        let path = Path::new(&opts.proofjson);
+        assert!(!path.exists(), "duplicate proof json file: {}", path.display());
+    }
+    let writer = File::create(&opts.new_proof).unwrap();
+    proof.write(writer).unwrap();
+    log::info!("Proof saved to {}", opts.new_proof);
+
+    let ser_proof_str = serde_json::to_string_pretty(&proof).unwrap();
+    std::fs::write(&opts.proofjson, ser_proof_str.as_bytes()).expect("save proofjson err");
+    log::info!("Proof json saved to {}", opts.proofjson);
+}
+
+// recursively prove multiple proofs, and aggregate them into one, and save the proof to a file
+fn recursive_prove2(opts: RecursiveProveOpts2) {
+    let (old_proofs, old_vk) = reader::load_proofs_vks_from_list::<Bn256>(&opts.old_proof_list);
+    let big_crs = reader::load_key_monomial_form(&opts.srs_monomial_form);
+    let proof = recursive::prove2(big_crs, old_proofs, old_vk).unwrap();
     if !opts.overwrite {
         let path = Path::new(&opts.new_proof);
         assert!(!path.exists(), "duplicate proof file: {}", path.display());
