@@ -3,10 +3,11 @@ pragma circom 2.0.0;
 // the circuit proves you know some 'x' that satisfies 'x**3 + x + 5 == 35' without revealing what is x
 template Circuit() {
     signal input x;
+    signal output y;
 
     signal tmp;
     tmp <== x * x;
-    35 === tmp * x + x + 5;
+    y <== tmp * x + x + 5;
 }
 
 component main = Circuit();
