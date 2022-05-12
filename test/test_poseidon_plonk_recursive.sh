@@ -56,7 +56,7 @@ done
 cat $OLD_PROOF_LIST
 
 echo "Step: export recursive vk"
-time ($PLONKIT_BIN export-recursive-verification-key -c $i -i 3 -m $BIG_SETUP_MK -v $CIRCUIT_DIR/recursive_vk.bin --overwrite)
+time ($PLONKIT_BIN export-recursive-verification-key -c $i -i 1 -m $BIG_SETUP_MK -v $CIRCUIT_DIR/recursive_vk.bin --overwrite)
 
 echo "Step: generate recursive proof"
 time ($PLONKIT_BIN recursive-prove -m $BIG_SETUP_MK -f $OLD_PROOF_LIST -v $CIRCUIT_DIR/vk.bin -n $CIRCUIT_DIR/recursive_proof.bin -j $CIRCUIT_DIR/recursive_proof.json --overwrite)
@@ -68,7 +68,7 @@ echo "Step: check aggregation"
 $PLONKIT_BIN check-aggregation -o $OLD_PROOF_LIST -v $CIRCUIT_DIR/vk.bin -n $CIRCUIT_DIR/recursive_proof.bin
 
 echo "Step: generate recursive verifier smart contract"
-$PLONKIT_BIN generate-recursive-verifier -o $CIRCUIT_DIR/vk.bin -n $CIRCUIT_DIR/recursive_vk.bin -i 3 -s $CIRCUIT_DIR/verifier.sol --overwrite #-t contrib/template.sol
+$PLONKIT_BIN generate-recursive-verifier -o $CIRCUIT_DIR/vk.bin -n $CIRCUIT_DIR/recursive_vk.bin -i 1 -s $CIRCUIT_DIR/verifier.sol --overwrite #-t contrib/template.sol
 
 echo "Step: verify via smart contract"
 pushd $CONTRACT_TEST_DIR
