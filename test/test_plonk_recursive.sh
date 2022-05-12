@@ -31,39 +31,39 @@ popd
 
 echo "Step: collect old_proofs list"
 OLD_PROOF_LIST=$RECTEST_DIR/old_proof_list.txt
-rm $OLD_PROOF_LIST -rf
-touch $OLD_PROOF_LIST
-i=0
-for circuit_dir in `ls $RECTEST_DIR/data`
-do
-  CIRCUIT_DIR=$RECTEST_DIR/data/$circuit_dir
-  echo "Step: compile circuit and calculate witness"
-  npx snarkit2 check $CIRCUIT_DIR --witness_type bin
-
-  echo "Step: export verification key"
-  $PLONKIT_BIN export-verification-key -m $SETUP_MK -c $CIRCUIT_DIR/circuit.r1cs -v $CIRCUIT_DIR/vk.bin --overwrite
-
-  echo "Step: generate proof"
-  $PLONKIT_BIN prove -m $SETUP_MK -c $CIRCUIT_DIR/circuit.r1cs -w $CIRCUIT_DIR/witness.wtns -p $CIRCUIT_DIR/proof.bin -j $CIRCUIT_DIR/proof.json -i $CIRCUIT_DIR/public.json -t rescue --overwrite
-
-  echo "Step: verify proof"
-  $PLONKIT_BIN verify -p $CIRCUIT_DIR/proof.bin -v $CIRCUIT_DIR/vk.bin -t rescue
-
-  echo $CIRCUIT_DIR/proof.bin >> $OLD_PROOF_LIST
-  echo $CIRCUIT_DIR/vk.bin >> $OLD_PROOF_LIST
-  let "i++"
-done
-cat $OLD_PROOF_LIST
-
+#rm $OLD_PROOF_LIST -rf
+#touch $OLD_PROOF_LIST
+#i=0
+#for circuit_dir in `ls $RECTEST_DIR/data`
+#do
+#  CIRCUIT_DIR=$RECTEST_DIR/data/$circuit_dir
+#  echo "Step: compile circuit and calculate witness"
+#  npx snarkit2 check $CIRCUIT_DIR --witness_type bin
+#
+#  echo "Step: export verification key"
+#  $PLONKIT_BIN export-verification-key -m $SETUP_MK -c $CIRCUIT_DIR/circuit.r1cs -v $CIRCUIT_DIR/vk.bin --overwrite
+#
+#  echo "Step: generate proof"
+#  $PLONKIT_BIN prove -m $SETUP_MK -c $CIRCUIT_DIR/circuit.r1cs -w $CIRCUIT_DIR/witness.wtns -p $CIRCUIT_DIR/proof.bin -j $CIRCUIT_DIR/proof.json -i $CIRCUIT_DIR/public.json -t rescue --overwrite
+#
+#  echo "Step: verify proof"
+#  $PLONKIT_BIN verify -p $CIRCUIT_DIR/proof.bin -v $CIRCUIT_DIR/vk.bin -t rescue
+#
+#  echo $CIRCUIT_DIR/proof.bin >> $OLD_PROOF_LIST
+#  echo $CIRCUIT_DIR/vk.bin >> $OLD_PROOF_LIST
+#  let "i++"
+#done
+#cat $OLD_PROOF_LIST
+#
 #echo "Step: export recursive vk"
 #time ($PLONKIT_BIN export-recursive-verification-key -c $i -i 3 -m $BIG_SETUP_MK -v $RECTEST_DIR/recursive_vk.bin --overwrite)
 
-#echo "Step: generate recursive proof"
-#time ($PLONKIT_BIN recursive-prove -m $BIG_SETUP_MK -f $OLD_PROOF_LIST -v $RECTEST_DIR/vk.bin -n $RECTEST_DIR/recursive_proof.bin -j $RECTEST_DIR/recursive_proof.json --overwrite)
-#
-#echo "Step: verify recursive proof"
-#time ($PLONKIT_BIN recursive-verify -p $RECTEST_DIR/recursive_proof.bin -v $RECTEST_DIR/recursive_vk.bin)
-#
+echo "Step: generate recursive proof"
+time ($PLONKIT_BIN recursive-prove2 -m $BIG_SETUP_MK -f $OLD_PROOF_LIST -n $RECTEST_DIR/recursive_proof.bin -j $RECTEST_DIR/recursive_proof.json --overwrite)
+
+echo "Step: verify recursive proof"
+time ($PLONKIT_BIN recursive-verify -p $RECTEST_DIR/recursive_proof.bin -v $RECTEST_DIR/recursive_vk.bin)
+
 #echo "Step: check aggregation"
 #$PLONKIT_BIN check-aggregation -o $OLD_PROOF_LIST -v $RECTEST_DIR/vk.bin -n $RECTEST_DIR/recursive_proof.bin
 #

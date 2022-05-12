@@ -162,7 +162,10 @@ pub fn prove2(
     g2_bases.copy_from_slice(&big_crs.g2_monomial_bases.as_ref()[..]);
     let aux_data = BN256AuxData::new();
 
-    let individual_vk_idxs = old_proofs.iter().map(|_| 0usize).collect_vec();
+    let mut individual_vk_idxs = Vec::new();
+    for i in 0..old_vks.len() {
+        individual_vk_idxs.push(i);
+    }
 
     let (_, (vks_tree, all_witness_values)) = create_vks_tree(&old_vks, VK_TREE_DEPTH)?;
     let vks_tree_root = vks_tree.get_commitment();

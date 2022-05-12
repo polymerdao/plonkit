@@ -1,13 +1,18 @@
 pragma circom 2.0.0;
-// inspired by https://medium.com/@VitalikButerin/quadratic-arithmetic-programs-from-zero-to-hero-f6d558cea649
-// the circuit proves you know some 'x' that satisfies 'x**3 + x + 5 == 35' without revealing what is x
-template Circuit() {
-    signal input x;
-    signal output y;
+include "../../../../../node_modules/circomlib/circuits/poseidon.circom";
 
-    signal tmp;
-    tmp <== x * x;
-    y <== tmp * x + x + 5;
+template Circuit() {
+    signal input foo;
+    signal input bar;
+    signal output out;
+
+    component hasher1 = Poseidon(2);
+    hasher1.inputs[0] <== foo;
+    hasher1.inputs[1] <== bar;
+
+    component hasher2 = Poseidon(1);
+    hasher2.inputs[0] <== hasher1.out;
+    out <== hasher2.out;
 }
 
 component main = Circuit();
