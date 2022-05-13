@@ -40,6 +40,8 @@ enum SubCommand {
     GenerateVerifier(GenerateVerifierOpts),
     /// Generate recursive verifier smart contract
     GenerateRecursiveVerifier(GenerateRecursiveVerifierOpts),
+    /// Generate recursive verifier smart contract
+    GenerateRecursiveVerifier2(GenerateRecursiveVerifierOpts2),
     /// Export verifying key
     ExportVerificationKey(ExportVerificationKeyOpts),
     /// Export Recursive verifying key
@@ -52,6 +54,8 @@ enum SubCommand {
     RecursiveVerify(RecursiveVerifyOpts),
     /// Check proofs aggregation
     CheckAggregation(CheckAggregationOpts),
+    /// Check proofs aggregation
+    CheckAggregation2(CheckAggregationOpts2),
 }
 
 /// A subcommand for analysing the circuit and outputting some stats
@@ -175,6 +179,28 @@ struct GenerateRecursiveVerifierOpts {
     overwrite: bool,
 }
 
+/// A subcommand for generating a Solidity recursive verifier smart contract
+#[derive(Clap)]
+struct GenerateRecursiveVerifierOpts2 {
+    /// Old proof file list text file
+    #[clap(short = "o", long = "old_proof_list")]
+    old_proof_list: String,
+    /// Aggregated verification key file
+    #[clap(short = "n", long = "new_vk", default_value = "recursive_vk.bin")]
+    new_vk: String,
+    /// Num of inputs
+    #[clap(short = "i", long = "num_inputs")]
+    num_inputs: usize,
+    /// Output solidity file
+    #[clap(short = "s", long = "sol", default_value = "verifier.sol")]
+    sol: String,
+    /// Solidity template file
+    #[clap(short = "t", long = "template")]
+    tpl: Option<String>,
+    #[clap(long = "overwrite")]
+    overwrite: bool,
+}
+
 /// A subcommand for exporting verifying keys
 #[derive(Clap)]
 struct ExportVerificationKeyOpts {
@@ -276,6 +302,17 @@ struct CheckAggregationOpts {
     new_proof: String,
 }
 
+/// A subcommand for checking an aggregated proof is corresponding to the original proofs
+#[derive(Clap)]
+struct CheckAggregationOpts2 {
+    /// Old proof file list text file
+    #[clap(short = "o", long = "old_proof_list")]
+    old_proof_list: String,
+    /// Aggregated Proof BIN file
+    #[clap(short = "n", long = "new_proof", default_value = "recursive_proof.bin")]
+    new_proof: String,
+}
+
 fn main() {
     // Always print backtrace on panic.
     std::env::set_var("RUST_BACKTRACE", "1");
@@ -312,6 +349,9 @@ fn main() {
         SubCommand::GenerateRecursiveVerifier(o) => {
             generate_recursive_verifier(o);
         }
+        SubCommand::GenerateRecursiveVerifier2(o) => {
+            generate_recursive_verifier2(o);
+        }
         SubCommand::ExportVerificationKey(o) => {
             export_vk(o);
         }
@@ -329,6 +369,9 @@ fn main() {
         }
         SubCommand::CheckAggregation(o) => {
             check_aggregation(o);
+        }
+        SubCommand::CheckAggregation2(o) => {
+            check_aggregation2(o);
         }
     }
 }
@@ -504,6 +547,31 @@ fn generate_recursive_verifier(opts: GenerateRecursiveVerifierOpts) {
     log::info!("Contract saved to {}", opts.sol);
 }
 
+// generate a solidity plonk verifier for proof recursion
+fn generate_recursive_verifier2(opts: GenerateRecursiveVerifierOpts2) {
+    let (_, old_vk) = reader::load_proofs_vks_from_list::<Bn256>(&opts.old_proof_list);
+    let recursive_vk = reader::load_recursive_verification_key(&opts.new_vk);
+    let config = recurisive_vk_codegen::Config {
+        vk_tree_root: recursive::get_vk_tree_root_hash2(old_vk).unwrap(),
+        //vk_max_index: 0, //because we has aggregated only 1 vk
+        individual_input_num: opts.num_inputs,
+        recursive_vk,
+    };
+    if !opts.overwrite {
+        let path = Path::new(&opts.sol);
+        assert!(!path.exists(), "duplicate solidity file: {}", path.display());
+    }
+    match opts.tpl {
+        Some(tpl) => {
+            recurisive_vk_codegen::create_verifier_contract_from_template(config, &tpl, &opts.sol);
+        }
+        None => {
+            recurisive_vk_codegen::create_verifier_contract_from_default_template(config, &opts.sol);
+        }
+    }
+    log::info!("Contract saved to {}", opts.sol);
+}
+
 // export a verification key for a circuit, and save it to a file
 fn export_vk(opts: ExportVerificationKeyOpts) {
     let circuit_file = resolve_circuit_file(opts.circuit);
@@ -602,6 +670,22 @@ fn check_aggregation(opts: CheckAggregationOpts) {
     let new_proof = reader::load_aggregated_proof(&opts.new_proof);
 
     let expected = recursive::get_aggregated_input(old_proofs, old_vk).expect("fail to get aggregated input");
+    log::info!("hash to input: {:?}", expected);
+    log::info!("new_proof's input: {:?}", new_proof.proof.inputs[0]);
+
+    if expected == new_proof.proof.inputs[0] {
+        log::info!("Aggregation hash input match");
+    } else {
+        log::error!("Aggregation hash input mismatch");
+    }
+}
+
+// check an aggregated proof is corresponding to the original proofs
+fn check_aggregation2(opts: CheckAggregationOpts2) {
+    let (old_proofs, old_vk) = reader::load_proofs_vks_from_list::<Bn256>(&opts.old_proof_list);
+    let new_proof = reader::load_aggregated_proof(&opts.new_proof);
+
+    let expected = recursive::get_aggregated_input2(old_proofs, old_vk).expect("fail to get aggregated input");
     log::info!("hash to input: {:?}", expected);
     log::info!("new_proof's input: {:?}", new_proof.proof.inputs[0]);
 

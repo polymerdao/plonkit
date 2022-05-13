@@ -336,7 +336,44 @@ pub fn get_aggregated_input(
     Ok(expected_input)
 }
 
+// hash the vk_tree root, proof_indexes, proofs' inputs and aggregated points
+pub fn get_aggregated_input2(
+    old_proofs: Vec<OldProof<Bn256, PlonkCsWidth4WithNextStepParams>>,
+    old_vks: Vec<OldVerificationKey<Bn256, PlonkCsWidth4WithNextStepParams>>,
+) -> Result<bn256::Fr, anyhow::Error> {
+    let num_proofs_to_check = old_proofs.len();
+    assert!(num_proofs_to_check > 0);
+    assert!(num_proofs_to_check < 256);
+    assert_eq!(num_proofs_to_check, old_vks.len());
+    let num_inputs = old_proofs[0].num_inputs;
+    for p in &old_proofs {
+        assert_eq!(p.num_inputs, num_inputs, "proofs num_inputs mismatch!");
+    }
+
+    let rns_params = RnsParameters::<Bn256, <Bn256 as Engine>::Fq>::new_for_field(68, 110, 4);
+    let rescue_params = Bn256RescueParams::new_checked_2_into_1();
+
+    let mut proof_ids = Vec::new();
+    for i in 0..old_vks.len() {
+        proof_ids.push(i);
+    }
+
+    let (_, (vks_tree, _)) = create_vks_tree(&old_vks, VK_TREE_DEPTH)?;
+    let vks_tree_root = vks_tree.get_commitment();
+
+    let aggregate = make_aggregate(&old_proofs, &old_vks, &rescue_params, &rns_params)?;
+
+    let (expected_input, _) = make_public_input_and_limbed_aggregate(vks_tree_root, &proof_ids, &old_proofs, &aggregate, &rns_params);
+
+    Ok(expected_input)
+}
+
 pub fn get_vk_tree_root_hash(old_vk: OldVerificationKey<Bn256, PlonkCsWidth4WithNextStepParams>) -> Result<bn256::Fr, anyhow::Error> {
     let (_, (vks_tree, _)) = create_vks_tree(&vec![old_vk], VK_TREE_DEPTH)?;
+    Ok(vks_tree.get_commitment())
+}
+
+pub fn get_vk_tree_root_hash2(old_vk: Vec<OldVerificationKey<Bn256, PlonkCsWidth4WithNextStepParams>>) -> Result<bn256::Fr, anyhow::Error> {
+    let (_, (vks_tree, _)) = create_vks_tree(&old_vk, VK_TREE_DEPTH)?;
     Ok(vks_tree.get_commitment())
 }
